@@ -20,6 +20,14 @@ ORDER BY rating DESC
 """
 
 
+ALL_BOOKS = "SELECT id, title, price, rating FROM books ORDER BY id"
+
+
+def get_all_books(conn: sqlite3.Connection) -> list[dict]:
+    """Every book, for the long table at the end of the report."""
+    return [dict(row) for row in conn.execute(ALL_BOOKS)]
+
+
 def get_report_data(conn: sqlite3.Connection) -> dict:
     """Turns the books table into the report's numbers: two totals, a top 5 and a breakdown."""
     return {
