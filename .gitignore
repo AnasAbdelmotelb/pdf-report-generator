@@ -1,0 +1,13 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Generated artifacts and data: the seed script is the recipe
+report.db
+reports/
+
+# Local environment
+.env
+.DS_Store
