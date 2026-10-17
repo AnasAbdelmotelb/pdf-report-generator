@@ -6,7 +6,7 @@ Usage: python -m scripts.seed
 import json
 from pathlib import Path
 
-from app.db import ROOT, connect
+from app.db import ROOT, connect, transaction
 
 SOURCE = ROOT / "data" / "books.json"
 RATINGS = {"One": 1, "Two": 2, "Three": 3, "Four": 4, "Five": 5}
@@ -19,7 +19,7 @@ def to_row(book: dict) -> tuple[str, float, int, str]:
 
 def seed(conn, source: Path = SOURCE) -> int:
     rows = [to_row(book) for book in json.loads(source.read_text(encoding="utf-8"))]
-    with conn:  # one transaction: delete and insert succeed or fail together
+    with transaction(conn):  # delete and insert succeed or fail together
         conn.execute("DELETE FROM books")
         conn.executemany("INSERT INTO books (title, price, rating, url) VALUES (?, ?, ?, ?)", rows)
     return conn.execute("SELECT COUNT(*) FROM books").fetchone()[0]
