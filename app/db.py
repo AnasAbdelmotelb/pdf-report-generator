@@ -17,11 +17,24 @@ CREATE TABLE IF NOT EXISTS books (
 );
 
 CREATE TABLE IF NOT EXISTS reports (
-    id         INTEGER PRIMARY KEY,
-    path       TEXT NOT NULL,  -- relative to the project root, e.g. reports/1.pdf
-    created_at TEXT NOT NULL   -- ISO 8601 with the server's UTC offset
+    id          INTEGER PRIMARY KEY,
+    path        TEXT    NOT NULL,           -- relative to the project root, e.g. reports/1.pdf
+    created_at  TEXT    NOT NULL,           -- ISO 8601 with the server's UTC offset
+    report_date TEXT,                       -- the server's local date, YYYY-MM-DD
+    forced      INTEGER NOT NULL DEFAULT 0  -- 1 = made with {"force": true}
 );
 """
+
+# Columns added in Stage 5, for a report.db created before them.
+MIGRATIONS = {
+    "report_date": "ALTER TABLE reports ADD COLUMN report_date TEXT",
+    "forced": "ALTER TABLE reports ADD COLUMN forced INTEGER NOT NULL DEFAULT 0",
+}
+
+# At most one normal (not forced) report per day, enforced by the database itself.
+ONE_REPORT_PER_DAY = (
+    "CREATE UNIQUE INDEX IF NOT EXISTS one_report_per_day ON reports (report_date) WHERE forced = 0"
+)
 
 
 def db_path() -> Path:
@@ -34,9 +47,15 @@ def reports_dir() -> Path:
 
 def connect(path: Path | None = None) -> sqlite3.Connection:
     # isolation_level=None: no implicit transactions, so callers control BEGIN/COMMIT explicitly.
-    conn = sqlite3.connect(path or db_path(), isolation_level=None)
+    # timeout: a writer waits up to 30 s for another writer's lock (a render takes a second or two).
+    conn = sqlite3.connect(path or db_path(), isolation_level=None, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(reports)")}
+    for column, statement in MIGRATIONS.items():
+        if column not in columns:
+            conn.execute(statement)
+    conn.execute(ONE_REPORT_PER_DAY)
     return conn
 
 
