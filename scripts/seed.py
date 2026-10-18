@@ -6,7 +6,7 @@ Usage: python -m scripts.seed
 import json
 from pathlib import Path
 
-from app.db import ROOT, connect, transaction
+from app.db import ROOT, connect, db_path, transaction
 
 SOURCE = ROOT / "data" / "books.json"
 RATINGS = {"One": 1, "Two": 2, "Three": 3, "Four": 4, "Five": 5}
@@ -26,5 +26,5 @@ def seed(conn, source: Path = SOURCE) -> int:
 
 
 if __name__ == "__main__":
-    conn = connect()
-    print(f"Seeded {seed(conn)} books into {conn.execute('PRAGMA database_list').fetchone()['file']}")
+    path = db_path()
+    print(f"Seeded {seed(connect(path))} books into {path.relative_to(ROOT) if path.is_relative_to(ROOT) else path}")
